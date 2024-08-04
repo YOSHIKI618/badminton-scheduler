@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>72試合管理</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <h1>72試合管理</h1>
+    
+    <form action="/add_player" method="POST">
+        名前: <input type="text" name="name" required>
+        性別: 
+        <select name="gender" required>
+            <option value="male">男子</option>
+            <option value="female">女子</option>
+        </select>
+        学年: 
+        <select name="grade" required>
+            <option value="1">1年生</option>
+            <option value="2">2年生</option>
+            <option value="3">3年生</option>
+            <option value="4">4年生</option>
+        </select>
+        レベル: 
+        <select name="level" required>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+        </select>
+        <button type="submit">追加</button>
+    </form>
+
+    <h2>選手一覧</h2>
+    <ul>
+        {% for player in players %}
+        <li>
+            {{ player.name }} ({{ player.gender }}, {{ player.grade }}年, レベル: {{ player.level }})
+            <a href="/toggle_participation/{{ player.id }}">{{ '参加' if player.participation else '不参加' }}</a>
+            <a href="/delete_player/{{ player.id }}">削除</a>
+        </li>
+        {% endfor %}
+    </ul>
+    <a href="/generate_matches">試合を組む</a>
+</body>
+</html>

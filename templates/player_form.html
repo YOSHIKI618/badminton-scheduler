@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>72試合管理 - 選手情報フォーム</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>選手情報フォーム</h1>
+    <form action="" method="POST">
+        <label for="name">名前:</label>
+        <input type="text" id="name" name="name" value="{{ player.name if player else '' }}" required><br>
+
+        <label for="level">レベル (1-10):</label>
+        <input type="number" id="level" name="level" min="1" max="10" value="{{ player.level if player else '' }}" required><br>
+        
+        <label for="gender">性別:</label>
+        <select id="gender" name="gender" required>
+            <option value="male" {% if player and player.gender == 'male' %}selected{% endif %}>男子</option>
+            <option value="female" {% if player and player.gender == 'female' %}selected{% endif %}>女子</option>
+        </select><br>
+
+        <label for="grade">学年:</label>
+        <select id="grade" name="grade" required>
+            <option value="1" {% if player and player.grade == 1 %}selected{% endif %}>1年生</option>
+            <option value="2" {% if player and player.grade == 2 %}selected{% endif %}>2年生</option>
+            <option value="3" {% if player and player.grade == 3 %}selected{% endif %}>3年生</option>
+            <option value="4" {% if player and player.grade == 4 %}selected{% endif %}>4年生</option>
+        </select><br>
+
+        <label for="participating">参加する:</label>
+        <input type="checkbox" id="participating" name="participating" {% if player and player.participating %}checked{% endif %}><br>
+        
+        <button type="submit">保存</button>
+    </form>
+    <a href="{{ url_for('players') }}">戻る</a>
+</body>
+</html>

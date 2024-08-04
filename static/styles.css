@@ -1,25 +1,41 @@
 body {
     font-family: Arial, sans-serif;
+    margin: 20px;
 }
 
-h1, h2 {
-    text-align: center;
+h1, h2, h3 {
+    color: #333;
 }
 
 table {
-    width: 80%;
-    margin: auto;
+    width: 100%;
     border-collapse: collapse;
+    margin-bottom: 20px;
 }
 
 th, td {
+    border: 1px solid #ccc;
     padding: 10px;
-    border: 1px solid #ddd;
-    text-align: center;
+    text-align: left;
 }
 
-a {
-    text-decoration: none;
-    color: blue;
+th {
+    background-color: #f2f2f2;
 }
 
+button {
+    padding: 5px 10px;
+    margin: 5px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+form {
+    margin-bottom: 20px;
+}

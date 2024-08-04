@@ -2,41 +2,48 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>試合管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>試合結果</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <h1>試合管理</h1>
-    <h2>男子試合結果</h2>
-    <div>
+    <h1>試合結果</h1>
+    
+    <h2>男子</h2>
+    <table>
+        <tr>
+            <th>ペア1</th>
+            <th>ペア2</th>
+        </tr>
         {% for match in male_matches %}
-        <div>
-            <p><strong>ペア1:</strong> {{ match[0][0]['name'] }} ({{ match[0][0]['level'] }}), {{ match[0][1]['name'] }} ({{ match[0][1]['level'] }})</p>
-            <p><strong>ペア2:</strong> {{ match[1][0]['name'] }} ({{ match[1][0]['level'] }}), {{ match[1][1]['name'] }} ({{ match[1][1]['level'] }})</p>
-            <hr>
-        </div>
+        <tr>
+            <td>{{ match[0].name }} (レベル: {{ match[0].level }}) & {{ match[1].name }} (レベル: {{ match[1].level }})</td>
+            <td>{{ match[2].name }} (レベル: {{ match[2].level }}) & {{ match[3].name }} (レベル: {{ match[3].level }})</td>
+        </tr>
         {% endfor %}
-    </div>
-    <h2>女子試合結果</h2>
-    <div>
+    </table>
+    
+    <h2>女子</h2>
+    <table>
+        <tr>
+            <th>ペア1</th>
+            <th>ペア2</th>
+        </tr>
         {% for match in female_matches %}
-        <div>
-            <p><strong>ペア1:</strong> {{ match[0][0]['name'] }} ({{ match[0][0]['level'] }}), {{ match[0][1]['name'] }} ({{ match[0][1]['level'] }})</p>
-            <p><strong>ペア2:</strong> {{ match[1][0]['name'] }} ({{ match[1][0]['level'] }}), {{ match[1][1]['name'] }} ({{ match[1][1]['level'] }})</p>
-            <hr>
-        </div>
+        <tr>
+            <td>{{ match[0].name }} (レベル: {{ match[0].level }}) & {{ match[1].name }} (レベル: {{ match[1].level }})</td>
+            <td>{{ match[2].name }} (レベル: {{ match[2].level }}) & {{ match[3].name }} (レベル: {{ match[3].level }})</td>
+        </tr>
         {% endfor %}
-    </div>
-    <h2>試合に組まれていない男子選手</h2>
+    </table>
+
+    <h3>試合を組めなかった選手</h3>
     <ul>
-        {% for player in male_remaining %}
-        <li>{{ player['name'] }} ({{ player['level'] }})</li>
+        {% for player in male_unpaired %}
+        <li>{{ player.name }} (レベル: {{ player.level }})</li>
         {% endfor %}
-    </ul>
-    <h2>試合に組まれていない女子選手</h2>
-    <ul>
-        {% for player in female_remaining %}
-        <li>{{ player['name'] }} ({{ player['level'] }})</li>
+        {% for player in female_unpaired %}
+        <li>{{ player.name }} (レベル: {{ player.level }})</li>
         {% endfor %}
     </ul>
     <a href="{{ url_for('index') }}">戻る</a>

@@ -1,20 +1,24 @@
 from flask import Flask, render_template, request, redirect, url_for
-import sqlite3
+from flask_sqlalchemy import SQLAlchemy
 import random
 
 app = Flask(__name__)
-DATABASE = 'players.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///players.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = 'your_secret_key'
 
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
+db = SQLAlchemy(app)
 
-def get_players():
-    conn = get_db_connection()
-    players = conn.execute('SELECT * FROM players ORDER BY year, gender, level').fetchall()
-    conn.close()
-    return players
+class Player(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    level = db.Column(db.Integer, nullable=False)
+    gender = db.Column(db.String(10), nullable=False)
+    grade = db.Column(db.Integer, nullable=False)
+    participating = db.Column(db.Boolean, default=False)
+
+    def __repr__(self):
+        return f'<Player {self.name}>'
 
 @app.route('/')
 def index():
@@ -22,125 +26,126 @@ def index():
 
 @app.route('/players')
 def players():
-    players = get_players()
+    players = Player.query.order_by(Player.grade, Player.gender, Player.level).all()
     return render_template('players.html', players=players)
 
-@app.route('/add_player', methods=['POST'])
+@app.route('/add', methods=['GET', 'POST'])
 def add_player():
-    name = request.form['name']
-    gender = request.form['gender']
-    year = int(request.form['year'])
-    level = int(request.form['level'])
-    active = 1 if 'active' in request.form else 0
-    conn = get_db_connection()
-    conn.execute('INSERT INTO players (name, gender, year, level, active) VALUES (?, ?, ?, ?, ?)',
-                 (name, gender, year, level, active))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('players'))
-
-@app.route('/toggle_active/<int:player_id>', methods=['POST'])
-def toggle_active(player_id):
-    conn = get_db_connection()
-    player = conn.execute('SELECT active FROM players WHERE id = ?', (player_id,)).fetchone()
-    new_active_status = 0 if player['active'] else 1
-    conn.execute('UPDATE players SET active = ? WHERE id = ?', (new_active_status, player_id))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('players'))
-
-@app.route('/edit_player/<int:player_id>', methods=['GET', 'POST'])
-def edit_player(player_id):
-    conn = get_db_connection()
     if request.method == 'POST':
         name = request.form['name']
-        gender = request.form['gender']
-        year = int(request.form['year'])
         level = int(request.form['level'])
-        active = 1 if 'active' in request.form else 0
-        conn.execute('UPDATE players SET name = ?, gender = ?, year = ?, level = ?, active = ? WHERE id = ?',
-                     (name, gender, year, level, active, player_id))
-        conn.commit()
-        conn.close()
+        gender = request.form['gender']
+        grade = int(request.form['grade'])
+        participating = 'participating' in request.form
+        new_player = Player(name=name, level=level, gender=gender, grade=grade, participating=participating)
+        try:
+            db.session.add(new_player)
+            db.session.commit()
+            return redirect(url_for('players'))
+        except:
+            return '選手の追加に問題が発生しました'
+    else:
+        return render_template('player_form.html')
+
+@app.route('/edit/<int:id>', methods=['GET', 'POST'])
+def edit_player(id):
+    player = Player.query.get_or_404(id)
+    if request.method == 'POST':
+        player.name = request.form['name']
+        player.level = int(request.form['level'])
+        player.gender = request.form['gender']
+        player.grade = int(request.form['grade'])
+        player.participating = 'participating' in request.form
+        try:
+            db.session.commit()
+            return redirect(url_for('players'))
+        except:
+            return '選手の更新に問題が発生しました'
+    else:
+        return render_template('player_form.html', player=player)
+
+@app.route('/delete/<int:id>', methods=['POST'])
+def delete_player(id):
+    player = Player.query.get_or_404(id)
+    try:
+        db.session.delete(player)
+        db.session.commit()
         return redirect(url_for('players'))
-    player = conn.execute('SELECT * FROM players WHERE id = ?', (player_id,)).fetchone()
-    conn.close()
-    return render_template('edit_player.html', player=player)
+    except:
+        return '選手の削除に問題が発生しました'
 
-@app.route('/delete_player/<int:player_id>')
-def delete_player(player_id):
-    conn = get_db_connection()
-    conn.execute('DELETE FROM players WHERE id = ?', (player_id,))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('players'))
+@app.route('/toggle_participation/<int:id>', methods=['POST'])
+def toggle_participation(id):
+    player = Player.query.get_or_404(id)
+    player.participating = not player.participating
+    try:
+        db.session.commit()
+        return redirect(url_for('players'))
+    except:
+        return '参加状況の切り替えに問題が発生しました'
 
-def organize_matches():
-    players = get_players()
-    active_players = [player for player in players if player['active']]
+def create_sets(players):
+    players.sort(key=lambda p: p.level)
+    sets = []
+    unpaired = []
+    used_players = set()  # 使用済みプレイヤーの追跡
+    while len(players) > 1:
+        player1 = players.pop(0)
+        if player1 in used_players:
+            continue  # プレイヤーが既に使用されている場合はスキップ
+        found_partner = False
+        for diff in range(6):
+            candidate_partners = [p for p in players if abs(p.level - player1.level) <= diff and p not in used_players]
+            if candidate_partners:
+                partner = random.choice(candidate_partners)
+                players.remove(partner)
+                sets.append((player1, partner))
+                used_players.update([player1, partner])
+                found_partner = True
+                break
+        if not found_partner:
+            unpaired.append(player1)
+            used_players.add(player1)
+    if players:
+        for player in players:
+            if player not in used_players:
+                unpaired.append(player)
+                used_players.add(player)
+    return sets, unpaired
 
-    # 性別ごとに分ける
-    males = [player for player in active_players if player['gender'] == '男']
-    females = [player for player in active_players if player['gender'] == '女']
-
-    male_matches, male_remaining = create_matches_for_gender(males)
-    female_matches, female_remaining = create_matches_for_gender(females)
-
-    return {
-        'male_matches': male_matches,
-        'female_matches': female_matches,
-        'male_remaining': male_remaining,
-        'female_remaining': female_remaining
-    }
-
-def create_matches_for_gender(players):
-    groups = {
-        "1-2": [player for player in players if player['level'] in [1, 2]],
-        "3-4": [player for player in players if player['level'] in [3, 4]],
-        "5-8": [player for player in players if player['level'] in [5, 6, 7, 8]],
-        "9-10": [player for player in players if player['level'] in [9, 10]]
-    }
-
+def create_matches(sets, unpaired):
     matches = []
-    remaining_players = []
+    all_sets = sets
 
-    # 同じグループ内で試合を組む
-    for group_name, group in groups.items():
-        if group_name == "1-2":
-            # レベル1-2のプレイヤーはレベル5以上のプレイヤーと組まなければならない
-            while len(group) > 0:
-                player1 = group.pop()
-                found_partner = False
-                for higher_group_name in ["5-8", "9-10"]:
-                    higher_group = groups[higher_group_name]
-                    if len(higher_group) > 0:
-                        player2 = higher_group.pop()
-                        matches.append((player1, player2))
-                        found_partner = True
-                        break
-                if not found_partner:
-                    remaining_players.append(player1)
-        else:
-            while len(group) >= 4:
-                team1 = [group.pop(), group.pop()]
-                team2 = [group.pop(), group.pop()]
-                matches.append((team1, team2))
-            remaining_players.extend(group)
+    used_players = set()
+    for i in range(0, len(all_sets), 2):
+        if i + 1 < len(all_sets):
+            set1, set2 = all_sets[i], all_sets[i + 1]
+            if set1[0] not in used_players and set1[1] not in used_players and set2[0] not in used_players and set2[1] not in used_players:
+                matches.append((set1[0], set2[0], set1[1], set2[1]))
+                used_players.update(set1)
+                used_players.update(set2)
 
-    # 残りのプレイヤーをランダムに組み合わせる
-    if len(remaining_players) > 0:
-        random.shuffle(remaining_players)
-        while len(remaining_players) >= 4:
-            team1 = [remaining_players.pop(), remaining_players.pop()]
-            team2 = [remaining_players.pop(), remaining_players.pop()]
-            matches.append((team1, team2))
+    remaining_unpaired = unpaired + [player for player_set in all_sets for player in player_set if player not in used_players]
 
-    return matches, remaining_players
+    return matches, remaining_unpaired
 
 @app.route('/matches')
 def matches():
-    match_data = organize_matches()
-    return render_template('matches.html', **match_data)
+    players = Player.query.filter_by(participating=True).all()
+
+    male_players = [p for p in players if p.gender == 'male']
+    female_players = [p for p in players if p.gender == 'female']
+
+    male_sets, male_unpaired = create_sets(male_players)
+    female_sets, female_unpaired = create_sets(female_players)
+
+    male_matches, male_remaining_unpaired = create_matches(male_sets, male_unpaired)
+    female_matches, female_remaining_unpaired = create_matches(female_sets, female_unpaired)
+
+    return render_template('matches.html', male_matches=male_matches, female_matches=female_matches, male_unpaired=male_remaining_unpaired, female_unpaired=female_remaining_unpaired)
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)
